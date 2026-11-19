@@ -2,6 +2,49 @@
 
 Componente curricular **MLOps e Deploy** · Atividade em **dupla**
 
+## Implementação inicial
+
+A primeira fatia funcional deste projeto inclui a API FastAPI e a página de teste servida pela
+própria API. Assim, a página e os endpoints compartilham a mesma origem e não precisam de uma
+configuração adicional de CORS.
+
+### Executar localmente
+
+Requer **Python 3.12** (ou versão compatível com as dependências fixadas). Na raiz do projeto:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+uvicorn app.main:app --reload
+```
+
+Abra `http://localhost:8000` para usar a página ou `http://localhost:8000/docs` para explorar a
+API. Para parar o servidor, pressione `Ctrl+C`. No Linux/macOS, ative o ambiente com
+`source .venv/bin/activate`.
+
+O `.env.example` contém apenas uma chave **fictícia** para desenvolvimento. Ajuste `.env` se
+necessário; o arquivo `.env` real é ignorado pelo Git. Em produção, configure as mesmas variáveis
+no painel da plataforma de hospedagem, sem enviar o arquivo `.env`:
+
+| Variável | Padrão | Uso |
+|---|---|---|
+| `APP_ENV` | `dev` | Identifica o ambiente exibido pelo endpoint `/health`. |
+| `MODEL_VERSION` | `v1` | Versão incluída nas respostas da API e da página. |
+| `API_KEY` | sem chave | Quando definida, exige `X-API-Key` no `/predict`. O `/health` continua público. |
+| `MODEL_PATH` | `model/modelo.joblib` | Caminho opcional para outro arquivo de modelo. |
+
+### Endpoints implementados
+
+- `GET /health` devolve `status`, `versao` e `ambiente`.
+- `POST /predict` recebe `{"texto": "..."}` e devolve o rótulo previsto, sua probabilidade e
+  a versão. Texto vazio, composto só por espaços ou maior que 2.000 caracteres é rejeitado.
+- `GET /` abre a página para digitar uma mensagem, testar exemplos e consultar a saúde do serviço.
+
+As probabilidades refletem o modelo de demonstração, treinado com poucos exemplos. A previsão é
+indicativa e não deve ser tratada como uma decisão confiável sem validação adicional.
+
 ## 1. A história
 
 Vocês são a "squad de MLOps" de uma startup. Uma cientista de dados criou um **classificador de
