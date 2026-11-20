@@ -185,6 +185,12 @@ Só construir a imagem ou iniciar o container pelo botão **Run** do Docker Desk
 porta deixa a aplicação acessível apenas dentro do container. `EXPOSE 8000` descreve a porta usada
 pela imagem, mas não publica essa porta no Windows. O Compose já configura o mapeamento correto.
 
+O log `Uvicorn running on http://0.0.0.0:8000` é normal dentro do container: `0.0.0.0` significa
+que o servidor aceita conexões nas interfaces do container; não é o endereço para digitar no
+navegador. Use `http://localhost:8000` no Windows depois que a porta aparecer publicada. O Docker
+explica a diferença entre a porta interna e a porta publicada na documentação de
+[publicação de portas](https://docs.docker.com/engine/network/port-publishing/).
+
 ### Criar a próxima versão da imagem
 
 Para gerar `version3`, atualize estas duas variáveis no `.env`:
@@ -347,6 +353,9 @@ de ambiente adotado pela equipe para distinguir a publicação do ambiente local
   `docker compose ps` deve mostrar `127.0.0.1:8000->8000/tcp` e o estado `healthy`. Ao criar o
   container manualmente no Docker Desktop, configure o mapeamento da porta do host `8000` para a
   porta `8000` do container.
+- **O log mostra `http://0.0.0.0:8000`:** esse é o endereço de escuta dentro do container. Abra
+  `http://localhost:8000` no navegador do Windows; confirme antes que a porta está publicada com
+  `docker compose ps`.
 - **Container não fica saudável:** veja o motivo com `docker compose logs --tail=100 api` e
   confira se Docker Desktop está usando Linux containers e se a porta `8000` está livre.
 - **Docker não conecta no terminal do Ubuntu/WSL:** confirme que Docker Desktop está aberto e que
