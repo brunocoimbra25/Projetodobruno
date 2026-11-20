@@ -1,214 +1,224 @@
-# Classificador de spam: repositório-base da atividade "Do notebook à produção"
+# Classificador de spam
 
-Componente curricular **MLOps e Deploy** · Atividade em **dupla**
+Aplicação de demonstração que classifica mensagens em português como `spam` ou `nao_spam`. O
+projeto reúne um modelo de machine learning, uma API HTTP e uma página web para experimentar as
+previsões.
 
-## Implementação inicial
+> O modelo foi criado para uma atividade de MLOps. Ele usa uma base pequena e pode errar; não use
+> as previsões como única base para decisões importantes.
 
-A primeira fatia funcional deste projeto inclui a API FastAPI e a página de teste servida pela
-própria API. Assim, a página e os endpoints compartilham a mesma origem e não precisam de uma
-configuração adicional de CORS.
+## O que o projeto faz
 
-### Executar localmente
+1. A pessoa abre a página web e informa uma mensagem.
+2. A página envia a mensagem à API FastAPI.
+3. A API usa o pipeline TF-IDF + Regressão Logística salvo em `model/modelo.joblib`.
+4. A resposta informa o rótulo previsto, a probabilidade da classe prevista e a versão do modelo.
 
-Requer **Python 3.12** (ou versão compatível com as dependências fixadas). Na raiz do projeto:
+A página também consulta a saúde da API, oferece exemplos de mensagens e exibe erros de conexão
+ou de chave inválida. Ela é servida pela própria API, então não precisa de uma configuração
+separada de CORS.
+
+## Tecnologias
+
+- **Python 3.12**
+- **FastAPI** e **Uvicorn** para a API e o servidor web
+- **scikit-learn** para carregar e executar o modelo
+- **HTML, CSS e JavaScript** para a interface, sem processo de build separado
+- **python-dotenv** para carregar a configuração local do arquivo `.env`
+
+## Pré-requisitos
+
+- Python 3.12 instalado e disponível como `python` no terminal.
+- Git, caso vá clonar o repositório.
+- Acesso à internet na primeira instalação das dependências.
+
+## Instalação e execução local
+
+Execute os comandos a partir da pasta raiz do projeto.
+
+### Windows PowerShell
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
+```
+
+Abra o arquivo `.env` e preencha a configuração local. Para começar, use:
+
+```dotenv
+APP_ENV=dev
+MODEL_VERSION=v1
+API_KEY=chave-ficticia-123
+```
+
+Essa chave é apenas um exemplo para desenvolvimento; substitua-a por outra chave fictícia se
+compartilhar o ambiente. Não use uma chave real neste arquivo nem a envie ao Git.
+
+Inicie o servidor:
+
+```powershell
 uvicorn app.main:app --reload
 ```
 
-Abra `http://localhost:8000` para usar a página ou `http://localhost:8000/docs` para explorar a
-API. Para parar o servidor, pressione `Ctrl+C`. No Linux/macOS, ative o ambiente com
-`source .venv/bin/activate`.
+### Linux ou macOS
 
-O `.env.example` contém apenas uma chave **fictícia** para desenvolvimento. Ajuste `.env` se
-necessário; o arquivo `.env` real é ignorado pelo Git. Em produção, configure as mesmas variáveis
-no painel da plataforma de hospedagem, sem enviar o arquivo `.env`:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+cp .env.example .env
+```
 
-| Variável | Padrão | Uso |
+Edite `.env` com os valores mostrados acima e inicie o servidor:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+### Abrir a aplicação
+
+Com o servidor em execução:
+
+- Página web: [http://localhost:8000](http://localhost:8000)
+- Documentação interativa da API: [http://localhost:8000/docs](http://localhost:8000/docs)
+- Estado do serviço: [http://localhost:8000/health](http://localhost:8000/health)
+
+Para parar o servidor, pressione `Ctrl+C` no terminal.
+
+## Configuração
+
+O arquivo `.env.example` serve como ponto de partida. Copie-o para `.env` e preencha as variáveis.
+O `.gitignore` exclui `.env` do Git. Variáveis definidas diretamente no ambiente do sistema têm
+prioridade sobre os valores do arquivo `.env`.
+
+| Variável | Exemplo | Descrição |
 |---|---|---|
-| `APP_ENV` | `dev` | Identifica o ambiente exibido pelo endpoint `/health`. |
-| `MODEL_VERSION` | `v1` | Versão incluída nas respostas da API e da página. |
-| `API_KEY` | sem chave | Quando definida, exige `X-API-Key` no `/predict`. O `/health` continua público. |
+| `APP_ENV` | `dev` | Nome do ambiente devolvido por `/health`. |
+| `MODEL_VERSION` | `v1` | Versão incluída nas respostas e mostrada na página. |
+| `API_KEY` | `chave-ficticia-123` | Se preenchida, protege `/predict` com o cabeçalho `X-API-Key`. Deixe vazia para desativar a exigência localmente. |
 | `MODEL_PATH` | `model/modelo.joblib` | Caminho opcional para outro arquivo de modelo. |
 
-### Endpoints implementados
+Em uma hospedagem, configure essas variáveis nas configurações do serviço. Não publique o arquivo
+`.env` nem coloque chaves no HTML, no JavaScript ou no histórico do Git. O endpoint `/health` é
+público mesmo quando `API_KEY` está configurada.
 
-- `GET /health` devolve `status`, `versao` e `ambiente`.
-- `POST /predict` recebe `{"texto": "..."}` e devolve o rótulo previsto, sua probabilidade e
-  a versão. Texto vazio, composto só por espaços ou maior que 2.000 caracteres é rejeitado.
-- `GET /` abre a página para digitar uma mensagem, testar exemplos e consultar a saúde do serviço.
+## API
 
-As probabilidades refletem o modelo de demonstração, treinado com poucos exemplos. A previsão é
-indicativa e não deve ser tratada como uma decisão confiável sem validação adicional.
+### `GET /health`
 
-## 1. A história
+Não exige chave. Exemplo de resposta:
 
-Vocês são a "squad de MLOps" de uma startup. Uma cientista de dados criou um **classificador de
-mensagens spam** que funciona no notebook dela. A empresa precisa dele **rodando de forma
-confiável, versionada e monitorada**, com uma página web para testar, e acessível pela internet.
+```json
+{
+  "status": "ok",
+  "versao": "v1",
+  "ambiente": "dev"
+}
+```
 
-Seu trabalho **não** é melhorar o modelo. É colocá-lo em produção sem cair no "funciona só na
-minha máquina". Nesta etapa vocês constroem a API, a página web e publicam a primeira versão.
+### `POST /predict`
 
-## 2. O modelo
+Recebe um texto. Se `API_KEY` estiver preenchida, envie também o cabeçalho `X-API-Key`.
 
-| | |
-|---|---|
-| **O que faz** | Lê uma mensagem de texto e diz se é `spam` ou `nao_spam`, com a probabilidade |
-| **Para que serve** | Filtrar mensagens indesejadas (golpes, promoções falsas, links suspeitos) |
-| **Tipo** | TF-IDF + Regressão Logística (scikit-learn) |
-| **Arquivo** | `model/modelo.joblib` (poucos KB) |
-| **Dados de treino** | `data/mensagens.csv`: 66 mensagens em português, rotuladas pelo professor |
-| **Entrada** | Um texto |
-| **Saída** | Um rótulo (`spam` ou `nao_spam`) e a probabilidade de cada classe |
+Exemplo de requisição:
 
-**Limitações (importante):**
-- O conjunto de treino é **pequeno**; o modelo erra com facilidade e as probabilidades são baixas
-  (algo como 0,6 a 0,7). Isso é esperado: a atividade é sobre **entrega e operação**, não sobre acurácia.
-- Para carregar o `.joblib`, é necessário **Python com `scikit-learn==1.8.0`**. Outra versão pode
-  dar erro ou resultados diferentes.
-- Se quiserem retreinar: `pip install -r requirements-treino.txt` e `python model/train.py`.
+```http
+POST /predict HTTP/1.1
+Content-Type: application/json
+X-API-Key: chave-ficticia-123
 
-### Como usar o modelo em Python
+{"texto":"Parabéns! Você ganhou um prêmio. Clique no link para resgatar."}
+```
 
-Veja o arquivo `model/exemplo_uso.py`. Resumo:
+Exemplo de resposta:
 
-    import joblib
-    modelo = joblib.load("model/modelo.joblib")
-    probabilidades = modelo.predict_proba(["Você ganhou um prêmio! Clique aqui"])[0]
-    rotulo = modelo.classes_[probabilidades.argmax()]      # "spam" ou "nao_spam"
+```json
+{
+  "rotulo": "spam",
+  "probabilidade": 0.6742,
+  "versao": "v1"
+}
+```
 
-## 3. O que vocês vão construir
+O valor `probabilidade` é a probabilidade estimada para o rótulo retornado, entre `0` e `1`.
+O corpo precisa conter `texto` com até 2.000 caracteres. Campo ausente, texto vazio ou apenas
+com espaços recebe erro HTTP `422`. Sem chave ou com chave incorreta, a API responde `401`.
 
-    [ Página web ]  --->  [ API de inferência ]  --->  [ Modelo (.joblib) ]
-     (navegador)            /health  /predict
+Teste rápido no PowerShell, depois de iniciar o servidor (troque a chave se alterou `.env`):
 
-- **API:** completem o esqueleto em `app/main.py`.
-- **Página web:** sigam o modelo de site em `docs/modelo_de_pagina.md`.
-- **Tecnologias:** **vocês decidem.** A API precisa carregar o modelo `.joblib`, então precisa
-  rodar em **Python** (o esqueleto usa FastAPI, mas Flask também serve). A página pode ser HTML +
-  JavaScript simples ou um framework, e pode ficar junto da API ou em outro serviço.
-  **Anotem e justifiquem** as escolhas no README de vocês.
+```powershell
+$headers = @{ "X-API-Key" = "chave-ficticia-123" }
+$body = @{ texto = "Você ganhou um prêmio! Clique para resgatar." } | ConvertTo-Json
+Invoke-RestMethod -Uri http://localhost:8000/predict -Method Post -Headers $headers -ContentType "application/json" -Body $body
+```
 
-## 4. Contrato da API (não mudem, a página e as próximas etapas dependem dele)
+Se `API_KEY` estiver vazia, remova `-Headers $headers` do comando.
 
-**`GET /health`** devolve status 200 e:
+## Modelo e dados
 
-    {"status": "ok", "versao": "v1", "ambiente": "dev"}
+- `model/modelo.joblib`: pipeline treinado que a API carrega ao iniciar.
+- `data/mensagens.csv`: exemplos rotulados com as colunas `texto` e `rotulo`.
+- `model/train.py`: script opcional para retreinar o modelo.
+- `model/exemplo_uso.py`: exemplo de previsão diretamente em Python.
 
-**`POST /predict`** recebe:
+O modelo usa TF-IDF e Regressão Logística. A base tem poucas mensagens, portanto as previsões e
+probabilidades são apenas demonstrativas. Para carregar o arquivo do modelo, mantenha a versão de
+scikit-learn indicada em `requirements.txt`.
 
-    {"texto": "Parabéns! Você ganhou um prêmio, clique no link"}
+Para instalar também as dependências de treinamento e retreinar:
 
-e devolve:
+```bash
+python -m pip install -r requirements-treino.txt
+python model/train.py
+```
 
-    {"rotulo": "spam", "probabilidade": 0.67, "versao": "v1"}
+O script substitui `model/modelo.joblib` pelo modelo treinado com os dados informados. O
+retreinamento não é necessário para executar a API.
 
-Regras:
-- Texto vazio deve ser rejeitado (erro 4xx).
-- Se a variável `API_KEY` estiver definida, o `/predict` exige o cabeçalho `X-API-Key` com o
-  mesmo valor; sem ele, responda **401**. O `/health` nunca exige chave.
-- A `versao` vem da variável de ambiente `MODEL_VERSION`.
+## Estrutura do projeto
 
-## 5. Etapa 1: passo a passo
+```text
+app/
+  main.py          # aplicação FastAPI, endpoints e carregamento da configuração
+  index.html       # interface web servida em /
+data/
+  mensagens.csv    # dados de treinamento
+docs/
+  modelo_de_pagina.md
+model/
+  modelo.joblib    # pipeline de classificação salvo
+  train.py         # script opcional de treinamento
+  exemplo_uso.py   # uso do modelo sem a API
+.env.example       # exemplo de variáveis; copie para .env
+requirements.txt   # dependências para executar o serviço
+requirements-treino.txt
+```
 
-### 5.1 Preparação
-Este repositório-base é entregue em **pendrive**. Vocês vão criar o repositório da dupla **do zero**
-no GitHub.
+## Publicação
 
-1. Cada pessoa usa sua conta no **GitHub**.
-2. Copiem a pasta do pendrive para o computador de vocês.
-3. Uma pessoa cria um repositório **vazio** no GitHub (sugestão de nome: `mlops-spam-nome1-nome2`).
-   Adicionem a outra pessoa da dupla e **o professor** como colaboradores
-   (*Settings > Collaborators*). O professor informará o usuário dele em sala.
-4. Na pasta copiada, iniciem o Git e enviem o primeiro commit:
+A aplicação está preparada para ser executada com Uvicorn, mas este README não registra uma URL
+pública de produção. Quando publicar o projeto, adicione aqui a URL da página e configure
+`APP_ENV`, `MODEL_VERSION` e `API_KEY` na plataforma de hospedagem. Use `APP_ENV=test` ou o nome
+de ambiente adotado pela equipe para distinguir a publicação do ambiente local.
 
-       git init -b main
-       git add .
-       git commit -m "chore: importa repositório-base"
-       git remote add origin <url-do-repositorio>
-       git push -u origin main
+## Resolução de problemas
 
-5. A outra pessoa clona o repositório: `git clone <url>`.
-6. Instalem o ambiente:
+- **Erro ao carregar `modelo.joblib`:** confira se a instalação foi feita com a versão de
+  scikit-learn fixada em `requirements.txt` e se o arquivo existe em `model/modelo.joblib`.
+- **A ativação do ambiente virtual é bloqueada no PowerShell:** use um terminal novo ou execute
+  os comandos chamando diretamente `.\.venv\Scripts\python.exe -m pip ...` e
+  `.\.venv\Scripts\uvicorn.exe app.main:app --reload` da pasta do projeto.
+- **Resposta `401`:** confira se o cabeçalho `X-API-Key` corresponde ao valor de `API_KEY` em
+  `.env`; reinicie o servidor depois de alterar a configuração.
+- **Resposta `422`:** envie um JSON com a propriedade `texto`, preenchida e com no máximo 2.000
+  caracteres.
+- **A página não abre:** verifique se o Uvicorn continua rodando e se está acessando
+  `http://localhost:8000`.
 
-       python -m venv .venv
-       source .venv/bin/activate        # no Windows: .venv\Scripts\activate
-       pip install -r requirements.txt
+## Próximos passos da atividade
 
-### 5.2 API
-1. Completem `GET /health` e `POST /predict` em `app/main.py`.
-2. Rodem: `uvicorn app.main:app --reload` e abram `http://localhost:8000/docs` para testar.
-3. Testem com `curl` ou pela página `/docs` (exemplos prontos: veja `model/exemplo_uso.py`).
-
-### 5.3 Configuração e segredos
-- **Nada de configuração fixa no código.** Leiam tudo de variáveis de ambiente
-  (`MODEL_VERSION`, `APP_ENV`, `API_KEY`).
-- Copiem `.env.example` para `.env` (o `.gitignore` já impede o envio ao Git).
-- A chave de API deste exercício é **fictícia**. Mesmo assim, tratem como segredo: nunca no
-  código nem no repositório. Em produção, ela é configurada na plataforma de hospedagem.
-- `APP_ENV=dev` (na sua máquina) e `APP_ENV=test` (online): o que muda entre os dois?
-  Definam e documentem.
-
-### 5.4 Página web
-- Sigam `docs/modelo_de_pagina.md`.
-- A página **não deve ter a chave embutida**: o usuário digita a chave em um campo.
-- Testem os casos de erro: chave errada (401), API fora do ar, texto vazio.
-
-### 5.5 Git (os dois fazem commits)
-- **Commits pequenos e frequentes**, com mensagens claras. Exemplos:
-  `feat: implementa endpoint /health` · `fix: trata texto vazio no /predict` · `docs: explica como rodar`.
-- Os **dois** integrantes devem ter commits no histórico. Usem **pareamento**: uma pessoa digita
-  (piloto) e a outra revisa e orienta (copiloto), e troquem a cada tarefa.
-- Antes de começar a trabalhar: `git pull`. Depois de terminar uma tarefa: `git add`, `git commit`, `git push`.
-- Sugestão: uma branch por tarefa e *pull request* no GitHub para a outra pessoa revisar.
-
-### 5.6 Publicar online
-Com internet, vocês vão testar **localmente e online**. O professor sugere o **Render**, mas a escolha é de vocês: escolham uma plataforma de hospedagem
-gratuita para publicar a API e a página. Algumas opções (confiram as condições atuais, pois
-planos gratuitos mudam):
-
-| Opção | Observação |
-|---|---|
-| **Render** (sugestão do professor) | Serviços web e sites estáticos gratuitos, publicando direto do GitHub; o serviço gratuito "hiberna" após alguns minutos sem uso, então a primeira requisição pode demorar |
-| **GitHub Pages** | Só para páginas estáticas (a API precisa ficar em outro lugar) |
-| Outras | Pesquisem e justifiquem a escolha |
-
-Configurem as variáveis de ambiente **na plataforma** (não no código) e anotem a URL.
-Depois, repitam os testes na versão online.
-
-### 5.7 Documentação
-Escrevam um `README` da dupla (substituam este ou criem `README_DUPLA.md`) com: o que foi
-construído, tecnologias escolhidas e por quê, como rodar localmente, variáveis de ambiente
-necessárias, a URL online e quem fez o quê.
-
-## 6. Entrega e critérios de aceite da Etapa 1
-
-- [ ] API com `/health` e `/predict` funcionando **localmente**, conforme o contrato
-- [ ] `/predict` devolve 401 sem a chave correta (quando `API_KEY` está definida) e erro 4xx para texto vazio
-- [ ] Página web funcionando localmente, com os itens obrigatórios do modelo de site
-- [ ] Configuração por variáveis de ambiente e `.env.example` presente
-- [ ] Nenhum segredo no repositório (conferir o histórico, não só os arquivos atuais)
-- [ ] Repositório no GitHub com histórico de commits **dos dois integrantes** e o **professor adicionado como colaborador**
-- [ ] Tag **`v1`** criada no commit entregue (`git tag v1 && git push origin v1`)
-- [ ] Primeira versão **publicada online**, testada pela URL pública
-- [ ] README da dupla com instruções, escolhas de tecnologia e URL. **O professor vai clonar o repositório e rodar seguindo só o README**, então ele precisa estar completo (versão do Python, comandos, variáveis de ambiente)
-
-## 7. O que vem depois
-
-Nas próximas etapas vocês vão **empacotar** o serviço (Docker), **implantar** em um cluster local,
-montar um **pipeline de CI/CD**, adicionar **logs e métricas** e, por fim, enfrentar um **incidente
-simulado** com rollback. Por isso, o que vocês construírem agora precisa ser organizado, com
-configuração fora do código e testes fáceis de rodar.
-
-## 8. Erros comuns
-
-- **`InconsistentVersionWarning` ou erro ao abrir o modelo:** a versão do scikit-learn não é a 1.8.0.
-- **A página não consegue chamar a API estando em outro endereço:** pesquisem sobre **CORS**.
-- **Serviço online demora muito na primeira requisição:** plano gratuito hibernando; é esperado.
-- **Subiram uma chave por engano:** apaguem do código, troquem a chave e avisem o professor.
-  Apagar o arquivo depois do commit não remove a chave do histórico.
+Este repositório faz parte de uma atividade de MLOps. Etapas futuras podem adicionar testes
+automatizados, Docker, CI/CD, métricas e logs, implantação e rollback. Registre neste README as
+URLs, decisões e instruções novas conforme essas partes forem concluídas.
