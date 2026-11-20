@@ -1,8 +1,5 @@
 FROM python:3.12-slim
 
-ARG IMAGE_VERSION=version1
-LABEL org.opencontainers.image.version="${IMAGE_VERSION}"
-
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8000
@@ -14,6 +11,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=10001:10001 app ./app
 COPY --chown=10001:10001 model/modelo.joblib ./model/modelo.joblib
+
+ARG IMAGE_VERSION=version2
+LABEL org.opencontainers.image.version="${IMAGE_VERSION}"
 
 USER 10001:10001
 

@@ -32,6 +32,67 @@ separada de CORS.
 - Git, caso vá clonar o repositório.
 - Acesso à internet na primeira instalação das dependências.
 
+## Instalar WSL 2 e Docker Desktop no Windows
+
+O projeto usa **containers Linux**. No Windows, o Docker Desktop pode executá-los pelo WSL 2.
+Consulte também os guias oficiais da [Microsoft para instalar WSL](https://learn.microsoft.com/pt-br/windows/wsl/install/),
+da [Docker para instalar Docker Desktop no Windows](https://docs.docker.com/desktop/setup/install/windows-install/)
+e para [configurar a integração WSL 2](https://docs.docker.com/desktop/features/wsl/).
+
+### 1. Instalar ou atualizar WSL 2
+
+Abra o PowerShell como administrador e execute:
+
+```powershell
+wsl --install -d Ubuntu
+```
+
+Reinicie o Windows se for solicitado. Se o Ubuntu já estiver instalado, atualize o WSL e confira as
+distribuições e versões instaladas:
+
+```powershell
+wsl --update
+wsl --version
+wsl --list --verbose
+```
+
+Na lista, confirme que a distribuição Ubuntu está na versão `2`. Se aparecer `1`, converta-a:
+
+```powershell
+wsl --set-version Ubuntu 2
+```
+
+Abra o Ubuntu pelo menu Iniciar e conclua a configuração inicial de usuário e senha do Linux.
+
+### 2. Instalar e configurar Docker Desktop
+
+1. Baixe o instalador pela página oficial do [Docker Desktop para Windows](https://docs.docker.com/desktop/setup/install/windows-install/).
+2. Execute o instalador e escolha o backend **WSL 2** quando essa opção aparecer.
+3. Inicie Docker Desktop e aceite os termos de uso.
+4. Em **Settings > General**, confirme **Use the WSL 2 based engine**.
+5. Em **Settings > Resources > WSL Integration**, habilite a integração para **Ubuntu** e clique em **Apply**.
+6. Aguarde Docker Desktop indicar que o mecanismo está em execução.
+
+Não instale outro Docker Engine dentro do Ubuntu para este fluxo; Docker Desktop fornece o mecanismo
+e integra o comando `docker` à distribuição WSL escolhida. Confira no PowerShell ou no terminal do
+Ubuntu:
+
+```bash
+docker --version
+docker compose version
+docker info
+```
+
+Se esses comandos não conseguirem conectar ao servidor, abra Docker Desktop, aguarde o mecanismo
+iniciar e confira **Settings > Resources > WSL Integration**.
+
+### 3. Abrir o projeto
+
+No fluxo mais simples, abra PowerShell na pasta do projeto e execute os comandos Docker abaixo.
+Também é possível usar o terminal Ubuntu. Para melhor desempenho com WSL, mantenha uma cópia do
+repositório no sistema de arquivos Linux, por exemplo em `~/projetos/Projetodobruno`, em vez de
+trabalhar em `/mnt/c`.
+
 ## Instalação e execução local
 
 Execute os comandos a partir da pasta raiz do projeto.
@@ -49,7 +110,8 @@ O `.env.example` já fornece valores locais de exemplo. Depois de copiá-lo, o `
 
 ```dotenv
 APP_ENV=dev
-MODEL_VERSION=v1
+MODEL_VERSION=v2
+IMAGE_TAG=version2
 API_KEY=chave-ficticia-123
 ```
 
@@ -90,57 +152,63 @@ Para parar o servidor, pressione `Ctrl+C` no terminal.
 
 ## Executar com Docker
 
-Com o Docker Desktop aberto e o mecanismo do Docker em execução, crie o arquivo `.env` na raiz
-caso ainda não tenha feito isso (veja [Configuração](#configuração)). O Compose passa essas
-variáveis ao container; o arquivo `.env` não é incluído na imagem.
+Com Docker Desktop aberto e o mecanismo em execução, confira se existe um `.env` na raiz do projeto.
+Se não existir, copie `.env.example` para `.env` conforme a seção [Configuração](#configuração).
+O Compose envia as variáveis ao container; o arquivo `.env` não é incluído na imagem.
 
-Na raiz do projeto, construa a imagem e inicie o serviço. A configuração inicial gera a imagem
-com a tag `classificador-spam:version1`; essa tag também fica registrada como metadado da imagem
-no Docker Desktop.
+Na raiz do projeto, construa a imagem e inicie o serviço com um único comando:
 
 ```powershell
-docker compose up --build -d
+docker compose up --build -d --wait
 ```
 
-Acesse a mesma página em [http://localhost:8000](http://localhost:8000). Para acompanhar os logs
-e encerrar o serviço:
+O Compose cria a imagem com a tag configurada em `IMAGE_TAG` (por padrão
+`classificador-spam:version2`), inicia o container, publica a porta local `8000` e aguarda o
+healthcheck passar. Abra [http://localhost:8000](http://localhost:8000). O Docker Desktop deve
+mostrar o container como **healthy** e a porta `127.0.0.1:8000->8000/tcp`.
+
+Para acompanhar os logs e encerrar o serviço:
 
 ```powershell
-docker compose logs -f
+docker compose logs -f api
 docker compose down
 ```
 
-Também é possível construir e iniciar a imagem sem Compose:
+Também é possível iniciar a imagem diretamente, mas inclua a publicação da porta:
 
 ```powershell
-docker build -t classificador-spam:version1 .
-docker run --rm --name classificador-spam -p 8000:8000 --env-file .env classificador-spam:version1
+docker build -t classificador-spam:version2 .
+docker run --rm --name classificador-spam -p 127.0.0.1:8000:8000 --env-file .env classificador-spam:version2
 ```
 
-### Criar uma nova versão da imagem
+Só construir a imagem ou iniciar o container pelo botão **Run** do Docker Desktop sem mapear uma
+porta deixa a aplicação acessível apenas dentro do container. `EXPOSE 8000` descreve a porta usada
+pela imagem, mas não publica essa porta no Windows. O Compose já configura o mapeamento correto.
 
-Antes de gerar uma versão nova, atualize estas duas variáveis no `.env`:
+### Criar a próxima versão da imagem
+
+Para gerar `version3`, atualize estas duas variáveis no `.env`:
 
 ```dotenv
-IMAGE_TAG=version2
-MODEL_VERSION=v2
+IMAGE_TAG=version3
+MODEL_VERSION=v3
 ```
 
 Depois construa e inicie a versão nova:
 
 ```powershell
-docker compose up --build -d
+docker compose up --build -d --wait
 ```
 
-O Docker Desktop mostrará `classificador-spam:version2` como outra imagem. A imagem
-`classificador-spam:version1` continua disponível para consulta ou rollback enquanto não for
-removida manualmente. Para cada nova entrega, incremente a tag (`version3`, `version4`...) e
-atualize `MODEL_VERSION` para a versão correspondente (`v3`, `v4`...).
+O Docker Desktop mostrará `classificador-spam:version3` como outra imagem. As imagens
+`classificador-spam:version1` e `classificador-spam:version2` continuam disponíveis para consulta
+ou rollback enquanto não forem removidas manualmente. Para cada entrega seguinte, incremente a tag
+e `MODEL_VERSION` para a versão correspondente (`version4` e `v4`, por exemplo).
 
 O container inclui a API, a interface e `model/modelo.joblib`, e executa o processo como usuário
 sem privilégios administrativos. O `.dockerignore` exclui `.env`, ambiente virtual, dados de
 treinamento e arquivos de desenvolvimento do contexto de build. Se alterar o código ou as
-dependências, execute novamente `docker compose up --build -d` para reconstruir a imagem. Se a
+dependências, execute novamente `docker compose up --build -d --wait` para reconstruir a imagem. Se a
 porta local `8000` já estiver ocupada, encerre o outro serviço antes de iniciar o container.
 
 ## Configuração
@@ -153,8 +221,8 @@ prioridade sobre os valores do arquivo `.env`.
 | Variável | Exemplo | Descrição |
 |---|---|---|
 | `APP_ENV` | `dev` | Nome do ambiente devolvido por `/health`. |
-| `MODEL_VERSION` | `v1` | Versão incluída nas respostas e mostrada na página. |
-| `IMAGE_TAG` | `version1` | Tag da imagem Docker. Incremente a cada nova versão para manter as imagens anteriores identificáveis. |
+| `MODEL_VERSION` | `v2` | Versão incluída nas respostas e mostrada na página. |
+| `IMAGE_TAG` | `version2` | Tag da imagem Docker. Incremente a cada nova versão para manter as imagens anteriores identificáveis. |
 | `API_KEY` | `chave-ficticia-123` | Se preenchida, protege `/predict` com o cabeçalho `X-API-Key`. Deixe vazia para desativar a exigência localmente. |
 | `MODEL_PATH` | `model/modelo.joblib` | Caminho opcional para outro arquivo de modelo. |
 
@@ -171,7 +239,7 @@ Não exige chave. Exemplo de resposta:
 ```json
 {
   "status": "ok",
-  "versao": "v1",
+  "versao": "v2",
   "ambiente": "dev"
 }
 ```
@@ -196,7 +264,7 @@ Exemplo de resposta:
 {
   "rotulo": "spam",
   "probabilidade": 0.6742,
-  "versao": "v1"
+  "versao": "v2"
 }
 ```
 
@@ -274,6 +342,15 @@ de ambiente adotado pela equipe para distinguir a publicação do ambiente local
   caracteres.
 - **A página não abre:** verifique se o Uvicorn continua rodando e se está acessando
   `http://localhost:8000`.
+- **Docker Desktop mostra `8000/tcp`, mas o navegador não conecta:** a porta não foi publicada
+  para o Windows. Inicie pelo projeto com `docker compose up --build -d --wait`; o comando
+  `docker compose ps` deve mostrar `127.0.0.1:8000->8000/tcp` e o estado `healthy`. Ao criar o
+  container manualmente no Docker Desktop, configure o mapeamento da porta do host `8000` para a
+  porta `8000` do container.
+- **Container não fica saudável:** veja o motivo com `docker compose logs --tail=100 api` e
+  confira se Docker Desktop está usando Linux containers e se a porta `8000` está livre.
+- **Docker não conecta no terminal do Ubuntu/WSL:** confirme que Docker Desktop está aberto e que
+  a integração do Ubuntu está habilitada em **Settings > Resources > WSL Integration**.
 
 ## Próximos passos da atividade
 

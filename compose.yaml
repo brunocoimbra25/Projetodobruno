@@ -3,13 +3,23 @@ services:
     build:
       context: .
       args:
-        IMAGE_VERSION: ${IMAGE_TAG:-version1}
-    image: classificador-spam:${IMAGE_TAG:-version1}
+        IMAGE_VERSION: ${IMAGE_TAG:-version2}
+    image: classificador-spam:${IMAGE_TAG:-version2}
     container_name: classificador-spam
     labels:
-      org.opencontainers.image.version: ${IMAGE_TAG:-version1}
+      org.opencontainers.image.version: ${IMAGE_TAG:-version2}
     env_file:
       - .env
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
