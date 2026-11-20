@@ -110,8 +110,8 @@ O `.env.example` já fornece valores locais de exemplo. Depois de copiá-lo, o `
 
 ```dotenv
 APP_ENV=dev
-MODEL_VERSION=v2
-IMAGE_TAG=version2
+MODEL_VERSION=v3
+IMAGE_TAG=version3
 API_KEY=chave-ficticia-123
 ```
 
@@ -163,7 +163,7 @@ docker compose up --build -d --wait
 ```
 
 O Compose cria a imagem com a tag configurada em `IMAGE_TAG` (por padrão
-`classificador-spam:version2`), inicia o container, publica a porta local `8000` e aguarda o
+`classificador-spam:version3`), inicia o container, publica a porta local `8000` e aguarda o
 healthcheck passar. Abra [http://localhost:8000](http://localhost:8000). O Docker Desktop deve
 mostrar o container como **healthy** e a porta `127.0.0.1:8000->8000/tcp`.
 
@@ -177,8 +177,8 @@ docker compose down
 Também é possível iniciar a imagem diretamente, mas inclua a publicação da porta:
 
 ```powershell
-docker build -t classificador-spam:version2 .
-docker run --rm --name classificador-spam -p 127.0.0.1:8000:8000 --env-file .env classificador-spam:version2
+docker build -t classificador-spam:version3 .
+docker run --rm --name classificador-spam -p 127.0.0.1:8000:8000 --env-file .env classificador-spam:version3
 ```
 
 Só construir a imagem ou iniciar o container pelo botão **Run** do Docker Desktop sem mapear uma
@@ -193,11 +193,11 @@ explica a diferença entre a porta interna e a porta publicada na documentação
 
 ### Criar a próxima versão da imagem
 
-Para gerar `version3`, atualize estas duas variáveis no `.env`:
+Para gerar `version4`, atualize estas duas variáveis no `.env`:
 
 ```dotenv
-IMAGE_TAG=version3
-MODEL_VERSION=v3
+IMAGE_TAG=version4
+MODEL_VERSION=v4
 ```
 
 Depois construa e inicie a versão nova:
@@ -206,10 +206,13 @@ Depois construa e inicie a versão nova:
 docker compose up --build -d --wait
 ```
 
-O Docker Desktop mostrará `classificador-spam:version3` como outra imagem. As imagens
-`classificador-spam:version1` e `classificador-spam:version2` continuam disponíveis para consulta
-ou rollback enquanto não forem removidas manualmente. Para cada entrega seguinte, incremente a tag
-e `MODEL_VERSION` para a versão correspondente (`version4` e `v4`, por exemplo).
+O Docker Desktop mostrará `classificador-spam:version4` como outra imagem. As imagens
+`classificador-spam:version1`, `classificador-spam:version2` e `classificador-spam:version3`
+continuam disponíveis para consulta ou rollback enquanto não forem removidas manualmente. Para
+cada entrega seguinte, incremente a tag e `MODEL_VERSION` para a versão correspondente.
+
+A `version3` atual mantém o mesmo modelo de classificação; esta versão atualiza a identificação e
+o empacotamento do serviço, sem retreinar o modelo.
 
 O container inclui a API, a interface e `model/modelo.joblib`, e executa o processo como usuário
 sem privilégios administrativos. O `.dockerignore` exclui `.env`, ambiente virtual, dados de
@@ -227,8 +230,8 @@ prioridade sobre os valores do arquivo `.env`.
 | Variável | Exemplo | Descrição |
 |---|---|---|
 | `APP_ENV` | `dev` | Nome do ambiente devolvido por `/health`. |
-| `MODEL_VERSION` | `v2` | Versão incluída nas respostas e mostrada na página. |
-| `IMAGE_TAG` | `version2` | Tag da imagem Docker. Incremente a cada nova versão para manter as imagens anteriores identificáveis. |
+| `MODEL_VERSION` | `v3` | Versão incluída nas respostas e mostrada na página. |
+| `IMAGE_TAG` | `version3` | Tag da imagem Docker. Incremente a cada nova versão para manter as imagens anteriores identificáveis. |
 | `API_KEY` | `chave-ficticia-123` | Se preenchida, protege `/predict` com o cabeçalho `X-API-Key`. Deixe vazia para desativar a exigência localmente. |
 | `MODEL_PATH` | `model/modelo.joblib` | Caminho opcional para outro arquivo de modelo. |
 
@@ -245,7 +248,7 @@ Não exige chave. Exemplo de resposta:
 ```json
 {
   "status": "ok",
-  "versao": "v2",
+  "versao": "v3",
   "ambiente": "dev"
 }
 ```
@@ -270,7 +273,7 @@ Exemplo de resposta:
 {
   "rotulo": "spam",
   "probabilidade": 0.6742,
-  "versao": "v2"
+  "versao": "v3"
 }
 ```
 

@@ -3,11 +3,11 @@ services:
     build:
       context: .
       args:
-        IMAGE_VERSION: ${IMAGE_TAG:-version2}
-    image: classificador-spam:${IMAGE_TAG:-version2}
+        IMAGE_VERSION: ${IMAGE_TAG:-version3}
+    image: classificador-spam:${IMAGE_TAG:-version3}
     container_name: classificador-spam
     labels:
-      org.opencontainers.image.version: ${IMAGE_TAG:-version2}
+      org.opencontainers.image.version: ${IMAGE_TAG:-version3}
     env_file:
       - .env
     ports:
