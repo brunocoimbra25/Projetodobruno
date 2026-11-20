@@ -1,0 +1,11 @@
+services:
+  api:
+    build:
+      context: .
+    image: classificador-spam:local
+    container_name: classificador-spam
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

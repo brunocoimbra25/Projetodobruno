@@ -45,7 +45,7 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Abra o arquivo `.env` e preencha a configuração local. Para começar, use:
+O `.env.example` já fornece valores locais de exemplo. Depois de copiá-lo, o `.env` deve conter:
 
 ```dotenv
 APP_ENV=dev
@@ -71,7 +71,8 @@ python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edite `.env` com os valores mostrados acima e inicie o servidor:
+O `.env.example` já fornece valores locais de exemplo. Confira se o `.env` contém as variáveis
+mostradas acima e inicie o servidor:
 
 ```bash
 uvicorn app.main:app --reload
@@ -87,9 +88,43 @@ Com o servidor em execução:
 
 Para parar o servidor, pressione `Ctrl+C` no terminal.
 
+## Executar com Docker
+
+Com o Docker Desktop aberto e o mecanismo do Docker em execução, crie o arquivo `.env` na raiz
+caso ainda não tenha feito isso (veja [Configuração](#configuração)). O Compose passa essas
+variáveis ao container; o arquivo `.env` não é incluído na imagem.
+
+Na raiz do projeto, construa a imagem e inicie o serviço:
+
+```powershell
+docker compose up --build -d
+```
+
+Acesse a mesma página em [http://localhost:8000](http://localhost:8000). Para acompanhar os logs
+e encerrar o serviço:
+
+```powershell
+docker compose logs -f
+docker compose down
+```
+
+Também é possível construir e iniciar a imagem sem Compose:
+
+```powershell
+docker build -t classificador-spam .
+docker run --rm --name classificador-spam -p 8000:8000 --env-file .env classificador-spam
+```
+
+O container inclui a API, a interface e `model/modelo.joblib`, e executa o processo como usuário
+sem privilégios administrativos. O `.dockerignore` exclui `.env`, ambiente virtual, dados de
+treinamento e arquivos de desenvolvimento do contexto de build. Se alterar o código ou as
+dependências, execute novamente `docker compose up --build -d` para reconstruir a imagem. Se a
+porta local `8000` já estiver ocupada, encerre o outro serviço antes de iniciar o container.
+
 ## Configuração
 
-O arquivo `.env.example` serve como ponto de partida. Copie-o para `.env` e preencha as variáveis.
+O arquivo `.env.example` serve como ponto de partida e contém uma chave fictícia para uso local.
+Copie-o para `.env` e troque os valores se necessário.
 O `.gitignore` exclui `.env` do Git. Variáveis definidas diretamente no ambiente do sistema têm
 prioridade sobre os valores do arquivo `.env`.
 
@@ -219,6 +254,7 @@ de ambiente adotado pela equipe para distinguir a publicação do ambiente local
 
 ## Próximos passos da atividade
 
-Este repositório faz parte de uma atividade de MLOps. Etapas futuras podem adicionar testes
-automatizados, Docker, CI/CD, métricas e logs, implantação e rollback. Registre neste README as
-URLs, decisões e instruções novas conforme essas partes forem concluídas.
+Este repositório faz parte de uma atividade de MLOps. A API, a interface e o modelo já podem ser
+empacotados com Docker. Etapas futuras podem adicionar testes automatizados, CI/CD, métricas e
+logs, implantação e rollback. Registre neste README as URLs, decisões e instruções novas conforme
+essas partes forem concluídas.

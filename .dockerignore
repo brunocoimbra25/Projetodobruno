@@ -1,0 +1,12 @@
+.git
+.vscode
+.venv
+__pycache__
+*.py[cod]
+.env
+.env.*
+data/
+docs/
+model/train.py
+model/exemplo_uso.py
+requirements-treino.txt
