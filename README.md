@@ -94,7 +94,9 @@ Com o Docker Desktop aberto e o mecanismo do Docker em execução, crie o arquiv
 caso ainda não tenha feito isso (veja [Configuração](#configuração)). O Compose passa essas
 variáveis ao container; o arquivo `.env` não é incluído na imagem.
 
-Na raiz do projeto, construa a imagem e inicie o serviço:
+Na raiz do projeto, construa a imagem e inicie o serviço. A configuração inicial gera a imagem
+com a tag `classificador-spam:version1`; essa tag também fica registrada como metadado da imagem
+no Docker Desktop.
 
 ```powershell
 docker compose up --build -d
@@ -111,9 +113,29 @@ docker compose down
 Também é possível construir e iniciar a imagem sem Compose:
 
 ```powershell
-docker build -t classificador-spam .
-docker run --rm --name classificador-spam -p 8000:8000 --env-file .env classificador-spam
+docker build -t classificador-spam:version1 .
+docker run --rm --name classificador-spam -p 8000:8000 --env-file .env classificador-spam:version1
 ```
+
+### Criar uma nova versão da imagem
+
+Antes de gerar uma versão nova, atualize estas duas variáveis no `.env`:
+
+```dotenv
+IMAGE_TAG=version2
+MODEL_VERSION=v2
+```
+
+Depois construa e inicie a versão nova:
+
+```powershell
+docker compose up --build -d
+```
+
+O Docker Desktop mostrará `classificador-spam:version2` como outra imagem. A imagem
+`classificador-spam:version1` continua disponível para consulta ou rollback enquanto não for
+removida manualmente. Para cada nova entrega, incremente a tag (`version3`, `version4`...) e
+atualize `MODEL_VERSION` para a versão correspondente (`v3`, `v4`...).
 
 O container inclui a API, a interface e `model/modelo.joblib`, e executa o processo como usuário
 sem privilégios administrativos. O `.dockerignore` exclui `.env`, ambiente virtual, dados de
@@ -132,6 +154,7 @@ prioridade sobre os valores do arquivo `.env`.
 |---|---|---|
 | `APP_ENV` | `dev` | Nome do ambiente devolvido por `/health`. |
 | `MODEL_VERSION` | `v1` | Versão incluída nas respostas e mostrada na página. |
+| `IMAGE_TAG` | `version1` | Tag da imagem Docker. Incremente a cada nova versão para manter as imagens anteriores identificáveis. |
 | `API_KEY` | `chave-ficticia-123` | Se preenchida, protege `/predict` com o cabeçalho `X-API-Key`. Deixe vazia para desativar a exigência localmente. |
 | `MODEL_PATH` | `model/modelo.joblib` | Caminho opcional para outro arquivo de modelo. |
 

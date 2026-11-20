@@ -1,5 +1,8 @@
 FROM python:3.12-slim
 
+ARG IMAGE_VERSION=version1
+LABEL org.opencontainers.image.version="${IMAGE_VERSION}"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8000

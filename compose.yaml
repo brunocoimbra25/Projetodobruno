@@ -2,8 +2,12 @@ services:
   api:
     build:
       context: .
-    image: classificador-spam:local
+      args:
+        IMAGE_VERSION: ${IMAGE_TAG:-version1}
+    image: classificador-spam:${IMAGE_TAG:-version1}
     container_name: classificador-spam
+    labels:
+      org.opencontainers.image.version: ${IMAGE_TAG:-version1}
     env_file:
       - .env
     ports:
