@@ -53,7 +53,7 @@ def test_mensagem_comum_retorna_nao_spam(client):
     )
 
     assert response.status_code == 200
-    assert response.json()["rotulo"] == "spam"
+    assert response.json()["rotulo"] == "nao_spam"
 
 
 def test_texto_vazio_retorna_422_sem_contar_erro_5xx(client):
