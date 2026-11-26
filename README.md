@@ -333,9 +333,16 @@ requirements-treino.txt
 
 ## Publicação
 
-A aplicação está preparada para Docker e CI no GitHub Actions. Ainda não há URL pública de
-produção configurada; o deploy de teste só é acionado quando o segredo `DEPLOY_HOOK_URL` existe
-no repositório. Não informe uma URL pública até que uma plataforma tenha concluído o deploy.
+A aplicação está publicada no Render: **[https://projetodobruno.onrender.com](https://projetodobruno.onrender.com)**.
+O serviço Render `Projetodobruno` está conectado ao repositório `brunocoimbra25/Projetodobruno`,
+branch `main`, e o deploy inicial foi concluído com sucesso. No plano gratuito, a instância pode
+hibernar após inatividade e levar alguns segundos para responder à primeira requisição.
+
+No painel do serviço Render, configure as variáveis de ambiente `APP_ENV=production` e
+`MODEL_VERSION=v4`. Em produção, `/docs`, `/redoc` e `/openapi.json` ficam desativados; a página e
+as rotas usadas pela aplicação continuam disponíveis. Não configure uma `API_KEY` sem adaptar a
+página para enviá-la, pois isso bloquearia as classificações pela interface pública. A chave é
+opcional e não deve ser incluída neste repositório.
 
 ## Testes, lint e CI
 
@@ -355,10 +362,15 @@ o hash imutável do commit e a referência da branch/tag. Para cada commit, o ha
 reprodutível. Releases usam tags Git versionadas (`v1`, `v2`, ...); a release corrigida desta
 etapa é `v2`, sem mover a tag histórica `v1`.
 
-O job de deploy de teste aceita um hook opcional. Configure `DEPLOY_HOOK_URL` em **Settings >
-Secrets and variables > Actions**. O endereço e tokens não devem ser colocados no YAML, no README
-ou impressos nos logs. Sem esse segredo, o workflow registra uma notificação e não aciona deploy.
-O deploy hook precisa pertencer a uma plataforma configurada para publicar esta imagem.
+No push para `main`, o job `deploy_test` aciona o deploy hook do Render depois que testes, lint e
+publicação da imagem no GHCR passam. Cadastre o hook do serviço Render como secret
+`RENDER_DEPLOY_HOOK_URL` em **GitHub > Settings > Secrets and variables > Actions**. Por
+compatibilidade, o workflow também aceita o nome antigo `DEPLOY_HOOK_URL`. O hook é enviado com o
+hash do commit (`ref`) para o Render implantar o código correspondente. Se o secret não existir, o
+job falha com instruções em vez de aparentar que o deploy foi feito.
+
+O endereço do hook e tokens são segredos: mantenha-os apenas nos Secrets do GitHub, nunca no YAML,
+README, `.env.example` ou logs. O link público da aplicação não é um segredo.
 
 ## Logs, métricas e operação
 

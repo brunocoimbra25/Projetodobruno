@@ -63,14 +63,15 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Acionar deploy de teste, se configurado
+      - name: Acionar deploy no Render
         env:
-          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL || secrets.DEPLOY_HOOK_URL }}
         run: |
-          if [ -z "$DEPLOY_HOOK_URL" ]; then
-            echo "::notice::DEPLOY_HOOK_URL não configurada; deploy não acionado."
-            exit 0
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::error::Cadastre o secret RENDER_DEPLOY_HOOK_URL (ou DEPLOY_HOOK_URL) com o deploy hook do Render."
+            exit 1
           fi
-          curl --fail --silent --show-error --output /dev/null \
+          curl --get --fail --silent --show-error --output /dev/null \
             --write-out "Deploy solicitado: HTTP %{http_code}\n" \
-            --request POST "$DEPLOY_HOOK_URL"
+            --data-urlencode "ref=${GITHUB_SHA}" \
+            "$RENDER_DEPLOY_HOOK_URL"

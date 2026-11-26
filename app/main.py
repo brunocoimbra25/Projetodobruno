@@ -31,7 +31,13 @@ PAGE_PATH = Path(__file__).resolve().parent / "index.html"
 # O modelo é carregado uma vez durante a importação da aplicação.
 modelo = joblib.load(MODEL_PATH)
 
-app = FastAPI(title="API de classificação de spam", version=MODEL_VERSION)
+app = FastAPI(
+    title="API de classificação de spam",
+    version=MODEL_VERSION,
+    docs_url=None if APP_ENV == "production" else "/docs",
+    redoc_url=None if APP_ENV == "production" else "/redoc",
+    openapi_url=None if APP_ENV == "production" else "/openapi.json",
+)
 
 metricas = {"requisicoes": 0, "erros_5xx": 0, "ms_total": 0.0}
 lock_metricas = Lock()
