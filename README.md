@@ -352,7 +352,8 @@ respostas, `/metrics`, validação de entrada e que texto/chave não vazam nos l
 O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda pytest e Ruff em pushes e
 pull requests para `main`. A publicação no GHCR só começa depois de ambos passarem; a imagem usa
 o hash imutável do commit e a referência da branch/tag. Para cada commit, o hash é a referência
-reprodutível. O tag Git `v1` identifica uma release do repositório.
+reprodutível. Releases usam tags Git versionadas (`v1`, `v2`, ...); a release corrigida desta
+etapa é `v2`, sem mover a tag histórica `v1`.
 
 O job de deploy de teste aceita um hook opcional. Configure `DEPLOY_HOOK_URL` em **Settings >
 Secrets and variables > Actions**. O endereço e tokens não devem ser colocados no YAML, no README
@@ -445,6 +446,8 @@ kubectl create secret generic spam-api-key -n mlops --from-literal=API_KEY='<sua
 - Kubernetes: os pods ficam `Running` e `Ready`; `kubectl describe` mostra probes e recursos.
 - Evidências recomendadas: captura do Actions verde/vermelho, painel `/metrics`, trecho de log JSON
   e descrição do Pod. Não inclua segredos nem mensagens privadas nas capturas.
+- Os links permanentes das execuções verde/vermelha e o registro de verificações locais estão em
+  [`docs/evidencias-ci.md`](docs/evidencias-ci.md).
 - A atividade tem um integrante: Bruno Coimbra. Não há commits de um segundo integrante a declarar.
 
 ## Resolução de problemas
