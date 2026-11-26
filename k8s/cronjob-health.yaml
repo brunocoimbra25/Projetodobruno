@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: spam-health-check
+  namespace: mlops
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 15
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: check
+              image: classificador-spam:version4
+              imagePullPolicy: Never
+              command: ["python", "-c"]
+              args:
+                - >-
+                  import json, urllib.request;
+                  response = urllib.request.urlopen('http://spam-service:8000/health', timeout=3);
+                  print(json.dumps({'status':'health_check_ok','http_status':response.status}))
+              resources:
+                requests:
+                  cpu: "10m"
+                  memory: "32Mi"
+                limits:
+                  memory: "64Mi"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 10001
+                runAsGroup: 10001
+                capabilities:
+                  drop: [ALL]

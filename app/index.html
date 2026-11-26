@@ -43,9 +43,18 @@
     .meter { width:100%; height:8px; margin:10px 0 14px; overflow:hidden; border-radius:99px; background:#e8ede8; }
     .meter-fill { width:0; height:100%; border-radius:inherit; background:var(--green); transition:width .25s ease; }
     .error { margin:14px 0 0; color:var(--red); font-size:.88rem; }
+    .ops { margin-top:18px; }
+    .ops-head { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px; }
+    .ops-head h2 { margin:0; }
+    .metrics-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
+    .metric-card { padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:#fbfcfa; }
+    .metric-card span { display:block; color:var(--muted); font-size:.8rem; }
+    .metric-card strong { display:block; margin-top:3px; font-size:1.5rem; letter-spacing:-.04em; }
+    .ops-status { min-height:1.4em; margin:12px 0 0; color:var(--muted); font-size:.84rem; }
     [hidden] { display:none !important; }
     footer { margin-top:20px; color:var(--muted); font-size:.8rem; text-align:center; }
-    @media (max-width:700px) { main { margin:28px auto; } header { align-items:flex-start; flex-direction:column; } .grid { grid-template-columns:1fr; } .card { padding:20px; } }
+    @media (max-width:700px) { main { margin:28px auto; } header { align-items:flex-start; flex-direction:column; } .grid { grid-template-columns:1fr; } .card { padding:20px; } .ops-head { align-items:flex-start; flex-direction:column; } }
+    @media (max-width:420px) { .metrics-grid { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -89,6 +98,22 @@
           <p class="result-meta" id="metadata" hidden></p>
         </div>
       </section>
+    </section>
+
+    <section class="card ops" aria-labelledby="ops-heading">
+      <div class="ops-head">
+        <div>
+          <p class="eyebrow">Observabilidade</p>
+          <h2 id="ops-heading">Painel de operação</h2>
+        </div>
+        <button class="primary" id="load-test" type="button">Enviar 50 requisições</button>
+      </div>
+      <div class="metrics-grid" aria-live="polite">
+        <div class="metric-card"><span>Requisições</span><strong id="metric-requests">—</strong></div>
+        <div class="metric-card"><span>Erros 5xx</span><strong id="metric-errors">—</strong></div>
+        <div class="metric-card"><span>Latência média</span><strong id="metric-latency">—</strong></div>
+      </div>
+      <p class="ops-status" id="ops-status" role="status">Lendo métricas…</p>
     </section>
     <footer>O modelo usa uma base pequena de exemplos; trate a previsão como uma indicação, não como certeza.</footer>
   </main>
@@ -182,7 +207,49 @@
       }
     });
 
+    async function refreshMetrics() {
+      const status = document.querySelector("#ops-status");
+      try {
+        const response = await fetch("/metrics");
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        document.querySelector("#metric-requests").textContent = data.requisicoes;
+        document.querySelector("#metric-errors").textContent = data.erros_5xx;
+        document.querySelector("#metric-latency").textContent = `${data.latencia_media_ms} ms`;
+        status.textContent = "Métricas atualizadas.";
+      } catch {
+        status.textContent = "Não foi possível carregar /metrics.";
+      }
+    }
+
+    document.querySelector("#load-test").addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      const status = document.querySelector("#ops-status");
+      const headers = { "Content-Type": "application/json" };
+      if (keyInput.value) headers["X-API-Key"] = keyInput.value;
+      button.disabled = true;
+      button.textContent = "Enviando…";
+      try {
+        const body = JSON.stringify({ texto: "Mensagem de exemplo para gerar carga." });
+        const responses = await Promise.all(Array.from({ length: 50 }, () => fetch("/predict", {
+          method: "POST",
+          headers,
+          body,
+        })));
+        const errors = responses.filter((response) => !response.ok).length;
+        status.textContent = `50 requisições concluídas; ${errors} respostas HTTP com erro.`;
+        await refreshMetrics();
+      } catch {
+        status.textContent = "Falha de conexão durante o envio de carga.";
+      } finally {
+        button.disabled = false;
+        button.textContent = "Enviar 50 requisições";
+      }
+    });
+
     checkHealth();
+    refreshMetrics();
+    window.setInterval(refreshMetrics, 5000);
   </script>
 </body>
 </html>

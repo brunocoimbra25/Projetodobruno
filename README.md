@@ -333,10 +333,119 @@ requirements-treino.txt
 
 ## Publicação
 
-A aplicação está preparada para ser executada com Uvicorn, mas este README não registra uma URL
-pública de produção. Quando publicar o projeto, adicione aqui a URL da página e configure
-`APP_ENV`, `MODEL_VERSION` e `API_KEY` na plataforma de hospedagem. Use `APP_ENV=test` ou o nome
-de ambiente adotado pela equipe para distinguir a publicação do ambiente local.
+A aplicação está preparada para Docker e CI no GitHub Actions. Ainda não há URL pública de
+produção configurada; o deploy de teste só é acionado quando o segredo `DEPLOY_HOOK_URL` existe
+no repositório. Não informe uma URL pública até que uma plataforma tenha concluído o deploy.
+
+## Testes, lint e CI
+
+Instale as dependências de desenvolvimento e execute localmente antes de enviar alterações:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+ruff check .
+```
+
+`tests/test_api.py` verifica `/health`, a classificação de spam e mensagem comum, o formato das
+respostas, `/metrics`, validação de entrada e que texto/chave não vazam nos logs.
+O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda pytest e Ruff em pushes e
+pull requests para `main`. A publicação no GHCR só começa depois de ambos passarem; a imagem usa
+o hash imutável do commit e a referência da branch/tag. Para cada commit, o hash é a referência
+reprodutível. O tag Git `v1` identifica uma release do repositório.
+
+O job de deploy de teste aceita um hook opcional. Configure `DEPLOY_HOOK_URL` em **Settings >
+Secrets and variables > Actions**. O endereço e tokens não devem ser colocados no YAML, no README
+ou impressos nos logs. Sem esse segredo, o workflow registra uma notificação e não aciona deploy.
+O deploy hook precisa pertencer a uma plataforma configurada para publicar esta imagem.
+
+## Logs, métricas e operação
+
+Cada requisição gera linhas JSON em stdout, com `request_id`, rota, método, status, duração e nível.
+Falhas 5xx registram tipo e mensagem genérica. O serviço não registra o conteúdo classificado,
+chaves, tokens ou dados pessoais. Os logs não são gravados em arquivos dentro do container.
+
+- `GET /health`: liveness, retorna HTTP 200 quando o processo atende.
+- `GET /ready`: readiness, retorna 200 depois que o modelo está carregado.
+- `GET /metrics`: contadores em memória `requisicoes`, `erros_5xx` e `latencia_media_ms`.
+- `POST /predict`: classifica `{ "texto": "..." }` e devolve `rotulo`, `probabilidade` e `versao`.
+
+Os contadores zeram quando o processo reinicia e são locais a cada réplica. A página inicial
+mostra o estado e os valores de `/metrics`; o botão de carga envia 50 mensagens de exemplo e
+exibe o status e a versão da resposta. Para inspecionar logs:
+
+```powershell
+docker logs -f classificador-spam
+docker logs --tail 20 classificador-spam 2>&1 | Select-String 'ERROR'
+```
+
+Em Linux/WSL, use `docker logs classificador-spam 2>&1 | grep ERROR`. No Kubernetes, use
+`kubectl logs -n mlops -f deployment/spam-service`.
+
+## Kubernetes local
+
+O manifesto pressupõe Docker Desktop Kubernetes configurado com **Kubeadm**, que compartilha o
+armazenamento de imagens do Docker. No Docker Desktop, abra **Kubernetes** e crie um cluster
+local; consulte o [guia oficial do Kubernetes no Docker Desktop](https://docs.docker.com/desktop/use-desktop/kubernetes/).
+Confirme o contexto `docker-desktop`:
+
+```powershell
+kubectl config use-context docker-desktop
+kubectl get nodes
+```
+
+Construa a imagem versionada e aplique os manifestos:
+
+```powershell
+docker compose build
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/
+kubectl get pods -n mlops -w
+```
+
+Abra a aplicação em outra janela do PowerShell:
+
+```powershell
+kubectl port-forward -n mlops service/spam-service 8001:8000
+```
+
+Visite `http://localhost:8001`. A porta 8001 evita conflito com o Compose na 8000. Para conferir
+probes, recursos e eventos, use `kubectl describe pod -n mlops <nome-do-pod>`. Logs e tarefas:
+
+```powershell
+kubectl logs -n mlops deployment/spam-service
+kubectl get cronjobs,jobs -n mlops
+```
+
+O Deployment define requests de CPU/memória, limite de memória, startup/readiness em `/ready`,
+liveness em `/health` e atualização RollingUpdate com `maxUnavailable: 0`. O CronJob executa
+uma verificação HTTP de `/health` a cada cinco minutos e falha se o serviço não responder. Ele
+não reinicia o Deployment nem envia notificação externa. Para uma verificação rápida com Docker,
+consulte `/health`; o reinício e o CronJob dependem do cluster local ativo.
+
+Limites operacionais documentados: serviço fora do ar após três verificações consecutivas sem
+resposta; latência média acima de 500 ms ou mais de cinco erros 5xx em um minuto são condições
+para investigação em `/metrics`. O projeto expõe os dados, mas não envia alertas externos.
+
+O manifesto usa `imagePullPolicy: Never` para testar a imagem local no Kubeadm. Não aplique esse
+manifesto a um cluster remoto: publique a imagem em um registry e altere a referência e a política
+de pull para o ambiente remoto. Se definir `API_KEY`, crie o Secret `spam-api-key` no namespace
+`mlops`; não versione valores reais:
+
+```powershell
+kubectl create secret generic spam-api-key -n mlops --from-literal=API_KEY='<sua-chave>'
+```
+
+## Checklist de entrega e evidências
+
+- CI verde: os jobs `testes` e `lint` passam; somente então o job `publicar` envia a imagem.
+- CI vermelho: uma falha de teste impede a publicação. Para evidência, salve a execução/log de
+  uma execução falha e a execução corrigida na aba **Actions**.
+- Docker: `docker compose ps` mostra a versão `version4` saudável e a porta local publicada.
+- Kubernetes: os pods ficam `Running` e `Ready`; `kubectl describe` mostra probes e recursos.
+- Evidências recomendadas: captura do Actions verde/vermelho, painel `/metrics`, trecho de log JSON
+  e descrição do Pod. Não inclua segredos nem mensagens privadas nas capturas.
+- A atividade tem um integrante: Bruno Coimbra. Não há commits de um segundo integrante a declarar.
 
 ## Resolução de problemas
 
@@ -364,9 +473,3 @@ de ambiente adotado pela equipe para distinguir a publicação do ambiente local
 - **Docker não conecta no terminal do Ubuntu/WSL:** confirme que Docker Desktop está aberto e que
   a integração do Ubuntu está habilitada em **Settings > Resources > WSL Integration**.
 
-## Próximos passos da atividade
-
-Este repositório faz parte de uma atividade de MLOps. A API, a interface e o modelo já podem ser
-empacotados com Docker. Etapas futuras podem adicionar testes automatizados, CI/CD, métricas e
-logs, implantação e rollback. Registre neste README as URLs, decisões e instruções novas conforme
-essas partes forem concluídas.
